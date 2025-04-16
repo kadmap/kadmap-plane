@@ -5,6 +5,7 @@ import "@/styles/globals.css";
 import "@/styles/command-pallette.css";
 import "@/styles/emoji.css";
 import "@/styles/react-day-picker.css";
+import "@/styles/hide-signout.css";
 // meta data info
 
 import { SITE_DESCRIPTION, SITE_NAME } from "@plane/constants";
