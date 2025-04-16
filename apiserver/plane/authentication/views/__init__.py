@@ -1,12 +1,14 @@
 from .common import ChangePasswordEndpoint, CSRFTokenEndpoint, SetUserPasswordEndpoint
 
-from .app.check import EmailCheckEndpoint
+from .app.check import EmailCheckEndpoint, UserAuthCheckEndpoint
 
 from .app.email import SignInAuthEndpoint, SignUpAuthEndpoint
 from .app.github import GitHubCallbackEndpoint, GitHubOauthInitiateEndpoint
 from .app.gitlab import GitLabCallbackEndpoint, GitLabOauthInitiateEndpoint
 from .app.google import GoogleCallbackEndpoint, GoogleOauthInitiateEndpoint
 from .app.magic import MagicGenerateEndpoint, MagicSignInEndpoint, MagicSignUpEndpoint
+from .app.auto_auth import AutoAuthEndpoint
+from .app.password_management import ForgotPasswordEndpoint, ResetPasswordEndpoint
 
 from .app.signout import SignOutAuthEndpoint
 
@@ -33,4 +35,35 @@ from .space.password_management import (
     ForgotPasswordSpaceEndpoint,
     ResetPasswordSpaceEndpoint,
 )
-from .app.password_management import ForgotPasswordEndpoint, ResetPasswordEndpoint
+
+__all__ = [
+    "EmailCheckEndpoint",
+    "UserAuthCheckEndpoint",
+    "SignInAuthEndpoint",
+    "SignUpAuthEndpoint",
+    "MagicGenerateEndpoint",
+    "MagicSignInEndpoint",
+    "MagicSignUpEndpoint",
+    "ChangePasswordEndpoint",
+    "ForgotPasswordEndpoint",
+    "ResetPasswordEndpoint",
+    "SetUserPasswordEndpoint",
+    "CSRFTokenEndpoint",
+    "AutoAuthEndpoint",
+    "SignOutAuthEndpoint",
+    "SignInAuthSpaceEndpoint",
+    "SignUpAuthSpaceEndpoint",
+    "MagicGenerateSpaceEndpoint",
+    "MagicSignInSpaceEndpoint",
+    "MagicSignUpSpaceEndpoint",
+    "ForgotPasswordSpaceEndpoint",
+    "ResetPasswordSpaceEndpoint",
+    "GitHubCallbackSpaceEndpoint",
+    "GitHubOauthInitiateSpaceEndpoint",
+    "GitLabCallbackSpaceEndpoint",
+    "GitLabOauthInitiateSpaceEndpoint",
+    "GoogleCallbackSpaceEndpoint",
+    "GoogleOauthInitiateSpaceEndpoint",
+    "SignOutAuthSpaceEndpoint",
+    "EmailCheckSpaceEndpoint",
+]
