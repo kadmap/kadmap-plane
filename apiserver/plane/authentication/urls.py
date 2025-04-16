@@ -36,6 +36,9 @@ from .views import (
     SignInAuthSpaceEndpoint,
     SignUpAuthSpaceEndpoint,
     SignOutAuthSpaceEndpoint,
+    # New endpoint
+    UserAuthCheckEndpoint,
+    AutoAuthEndpoint,
 )
 
 urlpatterns = [
@@ -129,4 +132,7 @@ urlpatterns = [
     ),
     path("change-password/", ChangePasswordEndpoint.as_view(), name="forgot-password"),
     path("set-password/", SetUserPasswordEndpoint.as_view(), name="set-password"),
+    # New endpoint
+    path("check-user/", UserAuthCheckEndpoint.as_view(), name="check-user"),
+    path("auto-auth/", AutoAuthEndpoint.as_view(), name="auto-auth"),
 ]
