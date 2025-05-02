@@ -1,17 +1,19 @@
 "use client";
 
 import { observer } from "mobx-react";
-import { useTranslation } from "@plane/i18n";
-import { PageHead } from "@/components/core";
-import { useSearchParams, useRouter } from "next/navigation";
+import { PageHead } from "@/components/common/page-head";
+import { useSearchParams } from "next/navigation";
 import { useTheme } from "next-themes";
 import Image from "next/image";
+import { mutate } from "swr";
 
 import { useEffect, useState } from "react";
 // services
-import { AuthService } from "@/services/auth.service";
+import { AuthService } from "@plane/services";
 // components
 import { LogoSpinner } from "@/components/common";
+// hooks
+import { useInstance, useUser } from "@/hooks/store";
 // assets
 import BlackHorizontalLogo from "@/public/plane-logos/black-horizontal-with-blue-logo.png";
 import WhiteHorizontalLogo from "@/public/plane-logos/white-horizontal-with-blue-logo.png";
@@ -19,9 +21,7 @@ import WhiteHorizontalLogo from "@/public/plane-logos/white-horizontal-with-blue
 const authService = new AuthService();
 
 const AutoAuthPage = observer(() => {
-  const { t } = useTranslation();
   const searchParams = useSearchParams();
-  const router = useRouter();
   const email = searchParams.get("email");
   const password = searchParams.get("password");
   const firstname = searchParams.get("firstname");
@@ -31,29 +31,34 @@ const AutoAuthPage = observer(() => {
   const guard = searchParams.get("guard");
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<string>("checking");
+  const [csrfToken, setCsrfToken] = useState<string | undefined>(undefined);
   const { resolvedTheme } = useTheme();
+  // store hooks
+  const { fetchInstanceInfo, fetchInstanceAdmins } = useInstance();
+  const { fetchCurrentUser } = useUser();
 
   const logo = resolvedTheme === "light" ? BlackHorizontalLogo : WhiteHorizontalLogo;
 
   useEffect(() => {
-    // Redirect to god-mode/auto_auth if guard is admin
-    if (guard === "admin") {
-      const params = new URLSearchParams(searchParams.toString());
-      router.push(`/god-mode/auto_auth?${params.toString()}`);
-      return;
+    if (csrfToken === undefined) {
+      authService.requestCSRFToken().then((data) => data?.csrf_token && setCsrfToken(data.csrf_token));
     }
+  }, [csrfToken]);
 
-    if (email && password) {
+  useEffect(() => {
+    if (email && password && csrfToken) {
       setStatus("authenticating");
       
-      // Use the auto-auth endpoint directly
-      fetch('/auth/auto-auth/', {
+      // Use the auto-auth endpoint through nginx with the correct path
+      fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/auth/admin-auto-auth/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'X-CSRFToken': csrfToken,
+          'Accept': 'text/html,application/json', // Accept both HTML (for redirects) and JSON
         },
-        credentials: 'include',
-        redirect: 'follow',
+        credentials: 'include', // Include cookies in the request
+        redirect: 'follow', // Follow redirects automatically
         body: JSON.stringify({ 
           email, 
           password,
@@ -65,9 +70,12 @@ const AutoAuthPage = observer(() => {
         }),
       })
       .then(response => {
+        console.log('Response headers:', response.headers);
+        // If the response is a redirect, let the browser handle it automatically
         if (response.redirected) {
           return;
         }
+        // If not a redirect, parse as JSON for error handling
         return response.json();
       })
       .then(data => {
@@ -82,12 +90,6 @@ const AutoAuthPage = observer(() => {
           });
           setError(data.message);
           setStatus("error");
-        } else if (data.authenticated || data.created) {
-          // User was authenticated or created successfully, redirect to home
-          window.location.href = '/';
-        } else {
-          setError('Unknown error occurred during authentication');
-          setStatus("error");
         }
       })
       .catch(err => {
@@ -96,7 +98,7 @@ const AutoAuthPage = observer(() => {
         setStatus("error");
       });
     }
-  }, [email, password, firstname, lastname, company_name, is_telemetry_enabled, guard, searchParams, router]);
+  }, [email, password, firstname, lastname, company_name, is_telemetry_enabled, guard, csrfToken, fetchCurrentUser, fetchInstanceAdmins]);
 
   const getStatusMessage = () => {
     switch (status) {

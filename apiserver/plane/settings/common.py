@@ -62,6 +62,7 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "crum.CurrentRequestUserMiddleware",
     "django.middleware.gzip.GZipMiddleware",
+    "debug_toolbar.middleware.DebugToolbarMiddleware",
     "plane.middleware.api_log_middleware.APITokenLogMiddleware",
 ]
 
@@ -413,4 +414,9 @@ ATTACHMENT_MIME_TYPES = [
     "text/xml",
     "text/csv",
     "application/xml",
+]
+
+# Debug Toolbar settings
+INTERNAL_IPS = [
+    "127.0.0.1",
 ]

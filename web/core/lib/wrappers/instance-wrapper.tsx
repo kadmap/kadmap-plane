@@ -1,6 +1,7 @@
 import { FC, ReactNode } from "react";
 import { observer } from "mobx-react";
 import useSWR from "swr";
+import { usePathname } from "next/navigation";
 // components
 import { LogoSpinner } from "@/components/common";
 import { InstanceNotReady, MaintenanceView } from "@/components/instance";
@@ -13,6 +14,7 @@ type TInstanceWrapper = {
 
 export const InstanceWrapper: FC<TInstanceWrapper> = observer((props) => {
   const { children } = props;
+  const pathname = usePathname();
   // store
   const { isLoading, instance, error, fetchInstanceInfo } = useInstance();
 
@@ -21,6 +23,11 @@ export const InstanceWrapper: FC<TInstanceWrapper> = observer((props) => {
     async () => await fetchInstanceInfo(),
     { revalidateOnFocus: false }
   );
+
+  // Bypass instance check for auto-auth route
+  if (pathname?.startsWith('/auto_auth')) {
+    return <>{children}</>;
+  }
 
   // loading state
   if ((isLoading || isInstanceSWRLoading) && !instance)

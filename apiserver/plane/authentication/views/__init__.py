@@ -8,6 +8,7 @@ from .app.gitlab import GitLabCallbackEndpoint, GitLabOauthInitiateEndpoint
 from .app.google import GoogleCallbackEndpoint, GoogleOauthInitiateEndpoint
 from .app.magic import MagicGenerateEndpoint, MagicSignInEndpoint, MagicSignUpEndpoint
 from .app.auto_auth import AutoAuthEndpoint
+from .app.admin_auto_auth import AdminAutoAuthEndpoint
 from .app.password_management import ForgotPasswordEndpoint, ResetPasswordEndpoint
 
 from .app.signout import SignOutAuthEndpoint
@@ -50,6 +51,7 @@ __all__ = [
     "SetUserPasswordEndpoint",
     "CSRFTokenEndpoint",
     "AutoAuthEndpoint",
+    "AdminAutoAuthEndpoint",
     "SignOutAuthEndpoint",
     "SignInAuthSpaceEndpoint",
     "SignUpAuthSpaceEndpoint",

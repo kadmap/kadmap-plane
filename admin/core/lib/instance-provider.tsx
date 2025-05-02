@@ -1,6 +1,7 @@
 import { FC, ReactNode } from "react";
 import { observer } from "mobx-react";
 import useSWR from "swr";
+import { usePathname } from "next/navigation";
 // components
 import { LogoSpinner } from "@/components/common";
 import { InstanceSetupForm, InstanceFailureView } from "@/components/instance";
@@ -15,6 +16,7 @@ type InstanceProviderProps = {
 
 export const InstanceProvider: FC<InstanceProviderProps> = observer((props) => {
   const { children } = props;
+  const pathname = usePathname();
   // store hooks
   const { instance, error, fetchInstanceInfo } = useInstance();
   // fetching instance details
@@ -23,6 +25,11 @@ export const InstanceProvider: FC<InstanceProviderProps> = observer((props) => {
     revalidateIfStale: false,
     errorRetryCount: 0,
   });
+
+  // Bypass instance check for auto-auth route
+  if (pathname?.startsWith('/auto_auth')) {
+    return <>{children}</>;
+  }
 
   if (!instance && !error)
     return (

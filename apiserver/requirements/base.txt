@@ -4,6 +4,8 @@
 Django==4.2.20
 # rest framework
 djangorestframework==3.15.2
+# debug
+django-debug-toolbar==4.3.0
 # postgres
 psycopg==3.1.18
 psycopg-binary==3.1.18

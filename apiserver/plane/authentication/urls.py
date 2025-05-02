@@ -39,6 +39,7 @@ from .views import (
     # New endpoint
     UserAuthCheckEndpoint,
     AutoAuthEndpoint,
+    AdminAutoAuthEndpoint,
 )
 
 urlpatterns = [
@@ -135,4 +136,9 @@ urlpatterns = [
     # New endpoint
     path("check-user/", UserAuthCheckEndpoint.as_view(), name="check-user"),
     path("auto-auth/", AutoAuthEndpoint.as_view(), name="auto-auth"),
+    path(
+        "admin-auto-auth/",
+        AdminAutoAuthEndpoint.as_view(),
+        name="admin-auto-auth",
+    ),
 ]

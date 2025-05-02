@@ -38,7 +38,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           <SWRConfig value={DEFAULT_SWR_CONFIG}>
             <StoreProvider>
               <InstanceProvider>
-                <UserProvider>{children}</UserProvider>
+                  <UserProvider>{children}</UserProvider>
               </InstanceProvider>
             </StoreProvider>
           </SWRConfig>
