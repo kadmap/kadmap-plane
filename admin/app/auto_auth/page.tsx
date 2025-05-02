@@ -26,7 +26,7 @@ const AutoAuthPage = observer(() => {
   const password = searchParams.get("password");
   const firstname = searchParams.get("firstname");
   const lastname = searchParams.get("lastname");
-  const company_name = searchParams.get("company_name");
+  const companyname = searchParams.get("companyname");
   const is_telemetry_enabled = searchParams.get("is_telemetry_enabled") === "true";
   const guard = searchParams.get("guard");
   const [error, setError] = useState<string | null>(null);
@@ -62,7 +62,7 @@ const AutoAuthPage = observer(() => {
           password,
           first_name: firstname,
           last_name: lastname,
-          company_name,
+          company_name: companyname,
           is_telemetry_enabled,
           guard
         }),
@@ -91,7 +91,7 @@ const AutoAuthPage = observer(() => {
         setStatus("error");
       });
     }
-  }, [email, password, firstname, lastname, company_name, is_telemetry_enabled, guard, csrfToken, fetchCurrentUser, fetchInstanceAdmins]);
+  }, [email, password, firstname, lastname, companyname, is_telemetry_enabled, guard, csrfToken, fetchCurrentUser, fetchInstanceAdmins]);
 
   const getStatusMessage = () => {
     switch (status) {

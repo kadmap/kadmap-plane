@@ -15,6 +15,7 @@ import { StoreProvider } from "@/lib/store-provider";
 import { UserProvider } from "@/lib/user-provider";
 // styles
 import "./globals.css";
+import "../styles/hide-signout.css";
 
 const ToastWithTheme = () => {
   const { resolvedTheme } = useTheme();

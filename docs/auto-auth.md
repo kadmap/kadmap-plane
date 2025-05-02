@@ -163,8 +163,13 @@ The auto-auth feature can be used with the following URL format:
 http://yourdomain.com/auto_auth?email=user@example.com&password=StrongP@ssw0rd!&firstname=John&lastname=Doe
 ```
 
+For admin auto-auth, use the following URL format:
+```
+http://yourdomain.com/auto_auth?email=admin@example.com&password=StrongP@ssw0rd!&firstname=Admin&lastname=User&companyname=MyCompany&guard=admin
+```
+
 Additional parameters:
-- `company_name`: (Optional) Company name for new user
+- `companyname`: (Optional) Company name for new user
 - `is_telemetry_enabled`: (Optional) Boolean flag for telemetry
 - `guard`: (Optional) User type (e.g., "admin")
 

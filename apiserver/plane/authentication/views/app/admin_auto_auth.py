@@ -75,57 +75,6 @@ class AdminAutoAuthEndpoint(APIView):
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
-            # Fetch and validate user
-            user = User.objects.filter(email=email).first()
-            if not user or not user.is_active or not user.check_password(password):
-                return Response(
-                    {
-                        "error": AUTHENTICATION_ERROR_CODES["ADMIN_AUTHENTICATION_FAILED"],
-                        "message": "ADMIN_AUTHENTICATION_FAILED",
-                        "payload": {"email": email},
-                    },
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-
-            # Check if user is an instance admin
-            if not InstanceAdmin.objects.filter(instance=instance, user=user).exists():
-                return Response(
-                    {
-                        "error": AUTHENTICATION_ERROR_CODES["ADMIN_AUTHENTICATION_FAILED"],
-                        "message": "ADMIN_AUTHENTICATION_FAILED",
-                        "payload": {"email": email},
-                    },
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-
-            # Update user's last active and login information
-            user.is_active = True
-            user.last_active = timezone.now()
-            user.last_login_time = timezone.now()
-            user.last_login_ip = request.META.get("REMOTE_ADDR")
-            user.last_login_uagent = request.META.get("HTTP_USER_AGENT")
-            user.token_updated_at = timezone.now()
-            user.save()
-
-            # Login the user
-            # user_login(request=request, user=user, is_admin=True)
-
-            # # Return success response with admin's general page URL
-            # url = urljoin(base_host(request=request, is_admin=True), "general")
-            # return Response(
-            #     {
-            #         "success": True,
-            #         "message": "Admin authenticated successfully",
-            #         "redirect_url": url,
-            #         "user": {
-            #             "email": user.email,
-            #             "first_name": user.first_name,
-            #             "last_name": user.last_name,
-            #         }
-            #     },
-            #     status=status.HTTP_200_OK
-            # )
-
         # Create new admin user
         if not email or not password or not first_name:
             return Response(

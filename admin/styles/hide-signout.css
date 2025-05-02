@@ -1,0 +1,28 @@
+/* CSS to hide all sign out buttons in the admin interface */
+
+/* Hide sign out buttons in admin sidebar dropdown */
+button:has(.lucide-log-out),
+button:has([class*="log-out"]),
+button:has(svg[class*="log-out"]) {
+  display: none !important;
+}
+
+/* Hide sign out forms in admin user avatar component */
+form[action*="sign-out"] {
+  display: none !important;
+}
+
+/* Hide text content with "Sign out" or "sign_out" text */
+*:has(> span:contains("sign_out")),
+*:has(> span:contains("Sign out")),
+*:has(> div:contains("Sign out")) {
+  display: none !important;
+}
+
+/* Hide by common class patterns if they exist */
+.sign-out-button,
+.logout-button,
+[class*="sign-out"],
+[class*="log-out"] {
+  display: none !important;
+} 
