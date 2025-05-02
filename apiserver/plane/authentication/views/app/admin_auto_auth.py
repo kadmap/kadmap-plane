@@ -108,7 +108,7 @@ class AdminAutoAuthEndpoint(APIView):
             user.save()
 
             # Login the user
-            user_login(request=request, user=user, is_admin=True)
+            # user_login(request=request, user=user, is_admin=True)
 
             # # Return success response with admin's general page URL
             # url = urljoin(base_host(request=request, is_admin=True), "general")
@@ -227,6 +227,13 @@ class AdminAutoAuthEndpoint(APIView):
         # Login the user after the transaction is complete
         user_login(request=request, user=user, is_admin=True)
 
-        # Redirect to general page
+        # Return success response with redirect URL
         url = urljoin(base_host(request=request, is_admin=True), "general")
-        return HttpResponseRedirect(url) 
+        return Response(
+            {
+                "success": True,
+                "message": "Admin user created and authenticated successfully",
+                "redirect_url": url,
+            },
+            status=status.HTTP_201_CREATED
+        ) 

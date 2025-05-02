@@ -11,8 +11,9 @@ This document outlines the implementation of two key features:
 
 ### Backend Changes
 
-We created a new API endpoint in the authentication system:
+We created two API endpoints in the authentication system:
 
+1. **Regular User Auto-Auth**:
 ```python
 # File: apiserver/plane/authentication/views/app/auto_auth.py
 class AutoAuthEndpoint(APIView):
@@ -26,24 +27,34 @@ class AutoAuthEndpoint(APIView):
     # - Returns JSON response with authentication status
 ```
 
-This endpoint was registered in the URL patterns:
+2. **Admin Auto-Auth**:
+```python
+# File: apiserver/plane/authentication/views/app/admin_auto_auth.py
+class AdminAutoAuthEndpoint(APIView):
+    permission_classes = [AllowAny]
+    
+    # Main logic:
+    # - Checks instance configuration
+    # - Validates admin credentials
+    # - Creates instance if it doesn't exist
+    # - Creates or authenticates admin user
+    # - Sets up instance admin permissions
+    # - Returns JSON response with redirect URL
+```
+
+These endpoints were registered in the URL patterns:
 
 ```python
 # File: apiserver/plane/authentication/urls.py
-path("auto-auth/", AutoAuthEndpoint.as_view(), name="auto-auth")
-```
-
-And imported in the authentication views:
-
-```python
-# File: apiserver/plane/authentication/views/__init__.py
-from .app.auto_auth import AutoAuthEndpoint
+path("auto-auth/", AutoAuthEndpoint.as_view(), name="auto-auth"),
+path("admin-auto-auth/", AdminAutoAuthEndpoint.as_view(), name="admin-auto-auth")
 ```
 
 ### Frontend Implementation
 
-A dedicated page was created to handle auto-auth:
+Two dedicated pages were created to handle auto-auth:
 
+1. **Regular User Auto-Auth**:
 ```typescript
 // File: web/app/auto_auth/page.tsx
 // Key functionality:
@@ -53,13 +64,109 @@ A dedicated page was created to handle auto-auth:
 // - Redirects to home page on successful authentication
 ```
 
+2. **Admin Auto-Auth**:
+```typescript
+// File: admin/app/auto_auth/page.tsx
+// Key functionality:
+// - Extracts admin credentials and instance details from URL parameters
+// - Makes a request to /auth/admin-auto-auth/ endpoint
+// - Handles authentication states and errors
+// - Redirects to admin dashboard on successful authentication
+```
+
+### Admin Auto-Auth Flow
+
+The admin authentication process follows these steps:
+
+1. **Initial Check**:
+   - Extract parameters from URL (email, password, firstname, lastname, company_name, etc.)
+   - Fetch CSRF token using AuthService
+   - Check if instance exists and is configured
+
+2. **Authentication Request**:
+   - Send POST request to `/auth/admin-auto-auth/` with:
+     - CSRF token in headers
+     - Admin credentials and instance details in body
+     - `credentials: 'include'` for cookie handling
+
+3. **Response Handling**:
+   - Parse JSON response
+   - Handle two scenarios:
+     - Error response: Display error message
+     - Success response: Redirect to admin dashboard
+
+### Interaction Between Frontend Pages
+
+The auto-auth system works in two stages:
+
+1. **Initial Request**:
+   - User visits `/auto_auth` with credentials
+   - If `guard=admin` is present, redirects to `/god-mode/auto_auth`
+   - Otherwise, proceeds with regular user authentication
+
+2. **Admin Authentication**:
+   - Admin page makes request to `/auth/admin-auto-auth/`
+   - On success, redirects to admin dashboard
+   - On failure, displays error message
+
+### CSRF Token Handling
+
+To handle CSRF protection, we implemented the following:
+
+1. **CSRF Token Fetching**:
+   ```typescript
+   // Using AuthService to fetch CSRF token
+   authService.requestCSRFToken()
+     .then((data) => {
+       if (data.csrf_token) {
+         setCsrfToken(data.csrf_token);
+       }
+     })
+   ```
+
+2. **Request Headers**:
+   ```typescript
+   headers: {
+     'Content-Type': 'application/json',
+     'X-CSRFToken': csrfToken,
+   }
+   ```
+
+### Authentication Flow
+
+The authentication process follows these steps:
+
+1. **Initial Check**:
+   - Extract parameters from URL (email, password, firstname, lastname, etc.)
+   - Fetch CSRF token using AuthService
+   - Check if user is an admin (redirects to god-mode if true)
+
+2. **Authentication Request**:
+   - Send POST request to `/auth/auto-auth/` with:
+     - CSRF token in headers
+     - User credentials and details in body
+     - `credentials: 'include'` for cookie handling
+
+3. **Response Handling**:
+   - Check for Location header (immediate redirect)
+   - Parse JSON response
+   - Handle three scenarios:
+     - Error response: Display error message
+     - Authenticated response: Redirect to root path ('/')
+     - Redirect URL response: Navigate to specified URL
+
 ### Usage
 
 The auto-auth feature can be used with the following URL format:
 
 ```
-http://yourdomain.com/auto-auth?email=user@example.com&password=StrongP@ssw0rd!&firstname=John&lastname=Doe
+http://yourdomain.com/auto_auth?email=user@example.com&password=StrongP@ssw0rd!&firstname=John&lastname=Doe
 ```
+
+Additional parameters:
+- `company_name`: (Optional) Company name for new user
+- `is_telemetry_enabled`: (Optional) Boolean flag for telemetry
+- `guard`: (Optional) User type (e.g., "admin")
 
 Parameter requirements:
 - `email`: Valid email address
@@ -136,8 +243,11 @@ Example of acceptable strong passwords:
    - Use one of the example passwords provided above
 
 2. **CSRF Verification Failed**:
-   - This is handled automatically by the frontend code
-   - If you encounter this error, check the CSRF token implementation
+   - The frontend automatically fetches and includes CSRF token
+   - If you encounter this error:
+     - Check if CSRF token is being fetched correctly
+     - Verify the token is included in request headers
+     - Ensure cookies are being sent with credentials: 'include'
 
 3. **404 Not Found errors**:
    - Verify the correct API endpoint paths are being used
@@ -145,4 +255,26 @@ Example of acceptable strong passwords:
 
 4. **Redirect loops**:
    - Clear browser cookies and try again
-   - Ensure the instance is properly configured 
+   - Ensure the instance is properly configured
+
+5. **Session Issues**:
+   - Check if session cookies are being set correctly
+   - Verify cookie domain settings in Django configuration
+   - Ensure CORS settings allow credentials
+
+### Debugging Tips
+
+1. **Check Network Requests**:
+   - Verify CSRF token is being fetched
+   - Check if authentication request includes proper headers
+   - Look for any CORS or cookie-related issues
+
+2. **Session Verification**:
+   - Use browser dev tools to check cookies
+   - Verify session cookie is present after authentication
+   - Check cookie domain and path settings
+
+3. **Response Handling**:
+   - Monitor console for error messages
+   - Check response headers for redirects
+   - Verify JSON response structure 

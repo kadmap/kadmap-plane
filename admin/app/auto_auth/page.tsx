@@ -55,10 +55,8 @@ const AutoAuthPage = observer(() => {
         headers: {
           'Content-Type': 'application/json',
           'X-CSRFToken': csrfToken,
-          'Accept': 'text/html,application/json', // Accept both HTML (for redirects) and JSON
         },
-        credentials: 'include', // Include cookies in the request
-        redirect: 'follow', // Follow redirects automatically
+        credentials: 'include',
         body: JSON.stringify({ 
           email, 
           password,
@@ -69,17 +67,9 @@ const AutoAuthPage = observer(() => {
           guard
         }),
       })
-      .then(response => {
-        console.log('Response headers:', response.headers);
-        // If the response is a redirect, let the browser handle it automatically
-        if (response.redirected) {
-          return;
-        }
-        // If not a redirect, parse as JSON for error handling
-        return response.json();
-      })
+      .then(response => response.json())
       .then(data => {
-        if (data && data.error) {
+        if (data.error) {
           console.error('Authentication error:', {
             email,
             password,
@@ -90,6 +80,9 @@ const AutoAuthPage = observer(() => {
           });
           setError(data.message);
           setStatus("error");
+        } else if (data.redirect_url) {
+          // Redirect to the provided URL
+          window.location.href = data.redirect_url;
         }
       })
       .catch(err => {

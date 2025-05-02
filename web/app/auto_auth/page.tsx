@@ -31,9 +31,25 @@ const AutoAuthPage = observer(() => {
   const guard = searchParams.get("guard");
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<string>("checking");
+  const [csrfToken, setCsrfToken] = useState<string | undefined>(undefined);
   const { resolvedTheme } = useTheme();
 
   const logo = resolvedTheme === "light" ? BlackHorizontalLogo : WhiteHorizontalLogo;
+
+  useEffect(() => {
+    // Get CSRF token using AuthService
+    authService.requestCSRFToken()
+      .then((data) => {
+        if (data.csrf_token) {
+          setCsrfToken(data.csrf_token);
+        }
+      })
+      .catch(err => {
+        console.error('Error fetching CSRF token:', err);
+        setError('Error fetching CSRF token');
+        setStatus("error");
+      });
+  }, []);
 
   useEffect(() => {
     // Redirect to god-mode/auto_auth if guard is admin
@@ -43,7 +59,7 @@ const AutoAuthPage = observer(() => {
       return;
     }
 
-    if (email && password) {
+    if (email && password && csrfToken) {
       setStatus("authenticating");
       
       // Use the auto-auth endpoint directly
@@ -51,21 +67,22 @@ const AutoAuthPage = observer(() => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'X-CSRFToken': csrfToken,
         },
         credentials: 'include',
-        redirect: 'follow',
         body: JSON.stringify({ 
           email, 
           password,
           first_name: firstname,
           last_name: lastname,
-          company_name,
-          is_telemetry_enabled,
-          guard
         }),
       })
       .then(response => {
-        if (response.redirected) {
+        // Get the redirect URL from the response headers
+        const redirectUrl = response.headers.get('Location');
+        if (redirectUrl) {
+          // Use Next.js router to navigate
+          router.push(redirectUrl);
           return;
         }
         return response.json();
@@ -82,12 +99,12 @@ const AutoAuthPage = observer(() => {
           });
           setError(data.message);
           setStatus("error");
-        } else if (data.authenticated || data.created) {
-          // User was authenticated or created successfully, redirect to home
-          window.location.href = '/';
-        } else {
-          setError('Unknown error occurred during authentication');
-          setStatus("error");
+        } else if (data && data.authenticated) {
+          // User is authenticated, redirect to root path
+          router.push('/');
+        } else if (data && data.redirect_url) {
+          // Use Next.js router to navigate
+          router.push(data.redirect_url);
         }
       })
       .catch(err => {
@@ -96,7 +113,7 @@ const AutoAuthPage = observer(() => {
         setStatus("error");
       });
     }
-  }, [email, password, firstname, lastname, company_name, is_telemetry_enabled, guard, searchParams, router]);
+  }, [email, password, firstname, lastname, company_name, is_telemetry_enabled, guard, searchParams, router, csrfToken]);
 
   const getStatusMessage = () => {
     switch (status) {
