@@ -17,10 +17,13 @@ import { useInstance, useUser } from "@/hooks/store";
 // assets
 import BlackHorizontalLogo from "@/public/plane-logos/black-horizontal-with-blue-logo.png";
 import WhiteHorizontalLogo from "@/public/plane-logos/white-horizontal-with-blue-logo.png";
+import { useRouter } from "next/navigation";
+
 
 const authService = new AuthService();
 
 const AutoAuthPage = observer(() => {
+  const router = useRouter();
   const searchParams = useSearchParams();
   let email;
   let firstName;
@@ -50,12 +53,12 @@ const AutoAuthPage = observer(() => {
   }, [csrfToken]);
 
   useEffect(() => {
-    let timeoutId: NodeJS.Timeout;
+    let timeoutId;
     timeoutId = setTimeout(() => {
       console.log("Page has been idle for too long, reloading...");
       setStatus("reloading");
       setTimeout(() => {
-        window.location.reload();
+        router.refresh();
       }, 1500); // Give user 1.5 seconds to see the reload message
     }, 5000);
     return () => {
@@ -118,7 +121,7 @@ const AutoAuthPage = observer(() => {
                 setStatus("error");
               } else if (data.redirect_url) {
                 // Redirect to the provided URL
-                window.location.href = data.redirect_url;
+                router.push(data.redirect_url);
               }
             })
             .catch(err => {
