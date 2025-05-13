@@ -143,33 +143,32 @@ const getStatusMessage = () => {
 
 ### Timeout Handling
 
-The auto-auth implementation includes automatic timeout handling to ensure users aren't stuck in an indefinite authentication state:
+The auto-auth implementation includes automatic timeout handling to ensure users aren't stuck in any state for too long:
 
-1. **Authentication Timeout**:
-   - If authentication takes longer than 5 seconds, the system will automatically trigger a page reload
+1. **Universal Page Timeout**:
+   - The page automatically reloads after 5 seconds of inactivity
    - Users are informed with a status message before the reload occurs
    - A 1.5-second delay is added before the actual reload to ensure users can read the status message
+   - This timeout applies regardless of the current authentication state
 
 2. **Implementation Details**:
 ```typescript
 useEffect(() => {
   let timeoutId: NodeJS.Timeout;
-  if (status === "authenticating") {
-    timeoutId = setTimeout(() => {
-      console.log("Authentication taking too long, reloading page...");
-      setStatus("reloading");
-      setTimeout(() => {
-        window.location.reload();
-      }, 1500); // Give user 1.5 seconds to see the reload message
-    }, 5000);
-  }
+  timeoutId = setTimeout(() => {
+    console.log("Page has been idle for too long, reloading...");
+    setStatus("reloading");
+    setTimeout(() => {
+      window.location.reload();
+    }, 1500); // Give user 1.5 seconds to see the reload message
+  }, 5000);
   return () => {
     if (timeoutId) clearTimeout(timeoutId);
   };
-}, [status]);
+}, []);
 ```
 
-This timeout mechanism helps prevent users from being stuck in a perpetual loading state and provides clear feedback about the system's actions.
+This timeout mechanism helps prevent users from being stuck in any state and provides clear feedback about the system's actions. The timeout starts as soon as the page loads and will trigger regardless of the current authentication status.
 
 ### Usage
 

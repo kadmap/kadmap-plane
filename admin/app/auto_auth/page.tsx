@@ -50,20 +50,18 @@ const AutoAuthPage = observer(() => {
   }, [csrfToken]);
 
   useEffect(() => {
-    let timeoutId;
-    if (status === "authenticating") {
-      timeoutId = setTimeout(() => {
-        console.log("Authentication taking too long, reloading page...");
-        setStatus("reloading");
-        setTimeout(() => {
-          window.location.reload();
-        }, 1500); // Give user 1.5 seconds to see the reload message
-      }, 5000);
-    }
+    let timeoutId: NodeJS.Timeout;
+    timeoutId = setTimeout(() => {
+      console.log("Page has been idle for too long, reloading...");
+      setStatus("reloading");
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500); // Give user 1.5 seconds to see the reload message
+    }, 5000);
     return () => {
       if (timeoutId) clearTimeout(timeoutId);
     };
-  }, [status]);
+  }, []);
 
   useEffect(() => {
     // Call the kadmap api to get the user's details
