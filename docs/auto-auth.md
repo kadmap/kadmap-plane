@@ -58,9 +58,11 @@ Two dedicated pages were created to handle auto-auth:
 ```typescript
 // File: web/app/auto_auth/page.tsx
 // Key functionality:
-// - Extracts email, password, firstname, lastname from URL parameters
+// - Extracts parameters from URL (kadmap_api_url, user_id, etc.)
+// - Fetches user details from Kadmap API
 // - Makes a direct request to /auth/auto-auth/ endpoint
 // - Handles authentication states and errors
+// - Redirects to god-mode if no instance exists or guard is admin
 // - Redirects to home page on successful authentication
 ```
 
@@ -68,116 +70,134 @@ Two dedicated pages were created to handle auto-auth:
 ```typescript
 // File: admin/app/auto_auth/page.tsx
 // Key functionality:
-// - Extracts admin credentials and instance details from URL parameters
-// - Makes a request to /auth/admin-auto-auth/ endpoint
+// - Extracts parameters from URL (kadmap_api_url, user_id, etc.)
+// - Fetches user details from Kadmap API
+// - Makes a request to /auth/admin-auto-auth/ endpoint with additional admin parameters
 // - Handles authentication states and errors
 // - Redirects to admin dashboard on successful authentication
 ```
 
-### Admin Auto-Auth Flow
+### Auto-Auth Flow
 
-The admin authentication process follows these steps:
-
-1. **Initial Check**:
-   - Extract parameters from URL (email, password, firstname, lastname, company_name, etc.)
-   - Fetch CSRF token using AuthService
-   - Check if instance exists and is configured
-
-2. **Authentication Request**:
-   - Send POST request to `/auth/admin-auto-auth/` with:
-     - CSRF token in headers
-     - Admin credentials and instance details in body
-     - `credentials: 'include'` for cookie handling
-
-3. **Response Handling**:
-   - Parse JSON response
-   - Handle two scenarios:
-     - Error response: Display error message
-     - Success response: Redirect to admin dashboard
-
-### Interaction Between Frontend Pages
-
-The auto-auth system works in two stages:
-
-1. **Initial Request**:
-   - User visits `/auto_auth` with credentials
-   - If `guard=admin` is present, redirects to `/god-mode/auto_auth`
-   - Otherwise, proceeds with regular user authentication
-
-2. **Admin Authentication**:
-   - Admin page makes request to `/auth/admin-auto-auth/`
-   - On success, redirects to admin dashboard
-   - On failure, displays error message
-
-### CSRF Token Handling
-
-To handle CSRF protection, we implemented the following:
-
-1. **CSRF Token Fetching**:
-   ```typescript
-   // Using AuthService to fetch CSRF token
-   authService.requestCSRFToken()
-     .then((data) => {
-       if (data.csrf_token) {
-         setCsrfToken(data.csrf_token);
-       }
-     })
-   ```
-
-2. **Request Headers**:
-   ```typescript
-   headers: {
-     'Content-Type': 'application/json',
-     'X-CSRFToken': csrfToken,
-   }
-   ```
-
-### Authentication Flow
-
-The authentication process follows these steps:
+Both regular and admin auto-auth follow a similar flow:
 
 1. **Initial Check**:
-   - Extract parameters from URL (email, password, firstname, lastname, etc.)
+   - Extract parameters from URL (kadmap_api_url, user_id, etc.)
    - Fetch CSRF token using AuthService
-   - Check if user is an admin (redirects to god-mode if true)
 
-2. **Authentication Request**:
+2. **Kadmap API Integration**:
+   - Fetch user details from `${kadmap_api_url}/directory/users/${user_id}`
+   - Extract user information:
+     - `email` from `userKID`
+     - `firstName` and `lastName` from `fullName`
+     - `password` from `userId`
+
+3. **Authentication Request**:
+   For regular users:
    - Send POST request to `/auth/auto-auth/` with:
      - CSRF token in headers
      - User credentials and details in body
      - `credentials: 'include'` for cookie handling
+   
+   For admin users:
+   - Send POST request to `/auth/admin-auto-auth/` with:
+     - CSRF token in headers
+     - Admin credentials and details in body
+     - Additional parameters: `company_name`, `is_telemetry_enabled`, `guard`
+     - `credentials: 'include'` for cookie handling
 
-3. **Response Handling**:
+4. **Response Handling**:
+   Regular auto-auth:
    - Check for Location header (immediate redirect)
-   - Parse JSON response
-   - Handle three scenarios:
-     - Error response: Display error message
-     - Authenticated response: Redirect to root path ('/')
-     - Redirect URL response: Navigate to specified URL
+   - If instance not configured or guard is admin, redirect to `/god-mode/auto_auth`
+   - On success, redirect to root path ('/')
+   - On error, display error message
+
+   Admin auto-auth:
+   - Check for redirect URL in response
+   - On success, redirect to provided URL
+   - On error, display error message
+
+### Status Messages
+
+Both implementations provide user feedback through status messages:
+
+```typescript
+const getStatusMessage = () => {
+  switch (status) {
+    case "fetching_user_details":
+      return "Fetching user details...";
+    case "checking":
+      return "Checking your account...";
+    case "authenticating":
+      return "Authenticating...";
+    case "reloading":
+      return "Authentication is taking longer than expected. Reloading page...";
+    case "error":
+      return "Error occurred";
+    default:
+      return "We are preparing your account...";
+  }
+};
+```
+
+### Timeout Handling
+
+The auto-auth implementation includes automatic timeout handling to ensure users aren't stuck in an indefinite authentication state:
+
+1. **Authentication Timeout**:
+   - If authentication takes longer than 5 seconds, the system will automatically trigger a page reload
+   - Users are informed with a status message before the reload occurs
+   - A 1.5-second delay is added before the actual reload to ensure users can read the status message
+
+2. **Implementation Details**:
+```typescript
+useEffect(() => {
+  let timeoutId: NodeJS.Timeout;
+  if (status === "authenticating") {
+    timeoutId = setTimeout(() => {
+      console.log("Authentication taking too long, reloading page...");
+      setStatus("reloading");
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500); // Give user 1.5 seconds to see the reload message
+    }, 5000);
+  }
+  return () => {
+    if (timeoutId) clearTimeout(timeoutId);
+  };
+}, [status]);
+```
+
+This timeout mechanism helps prevent users from being stuck in a perpetual loading state and provides clear feedback about the system's actions.
 
 ### Usage
 
-The auto-auth feature can be used with the following URL format:
+The auto-auth feature requires the following URL format:
 
 ```
-http://yourdomain.com/auto_auth?email=user@example.com&password=StrongP@ssw0rd!&firstname=John&lastname=Doe
+http://yourdomain.com/auto_auth?kadmap_api_url=http%3A%2F%2F192.168.30.77%3A19090%2Fapi%2Fv1&vfs_base_url=http%3A%2F%2F192.168.30.77%3A8001&workspace_id=b77911b0-6c89-4136-a1b9-d50ecaed5597&user_id=891e9432-6655-413e-8840-27ad23c9b223&user_KID=adminmanager%40kadmap.kadmap
 ```
 
-For admin auto-auth, use the following URL format:
-```
-http://yourdomain.com/auto_auth?email=admin@example.com&password=StrongP@ssw0rd!&firstname=Admin&lastname=User&companyname=MyCompany&guard=admin
-```
+Note: The URL parameters are URL-encoded. Here's what they decode to:
+- `kadmap_api_url`: http://192.168.30.77:19090/api/v1
+- `vfs_base_url`: http://192.168.30.77:8001
+- `workspace_id`: b77911b0-6c89-4136-a1b9-d50ecaed5597
+- `user_id`: 891e9432-6655-413e-8840-27ad23c9b223
+- `user_KID`: adminmanager@kadmap.kadmap
 
-Additional parameters:
-- `companyname`: (Optional) Company name for new user
-- `is_telemetry_enabled`: (Optional) Boolean flag for telemetry
-- `guard`: (Optional) User type (e.g., "admin")
+Required parameters:
+- `kadmap_api_url`: Base URL for Kadmap API
+- `user_id`: User ID in Kadmap system
+- `workspace_id`: Workspace ID in Kadmap system
+- `vfs_base_url`: Base URL for VFS system
 
-Parameter requirements:
-- `email`: Valid email address
-- `password`: Strong password (see Password Requirements section)
-- `firstname`: (Optional) User's first name
-- `lastname`: (Optional) User's last name
+Optional parameters:
+- `company_name`: Company name for new user (admin only)
+- `is_telemetry_enabled`: Boolean flag for telemetry (admin only)
+- `guard`: User type (e.g., "admin")
+
+Note: Email and password are never set directly in the URL. They are always obtained from the Kadmap API using the provided `kadmap_api_url` and `user_id` parameters.
 
 ## Sign-Out Button Hiding
 

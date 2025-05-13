@@ -22,13 +22,15 @@ const AutoAuthPage = observer(() => {
   const { t } = useTranslation();
   const searchParams = useSearchParams();
   const router = useRouter();
-  const email = searchParams.get("email");
-  const password = searchParams.get("password");
-  const firstname = searchParams.get("firstname");
-  const lastname = searchParams.get("lastname");
-  const company_name = searchParams.get("company_name");
-  const is_telemetry_enabled = searchParams.get("is_telemetry_enabled") === "true";
-  const guard = searchParams.get("guard");
+  let email;
+  let firstName;
+  let lastName;
+  let password;
+  let guard = searchParams.get("guard");
+  const kadmap_api_url = searchParams.get("kadmap_api_url");
+  const vfs_base_url = searchParams.get("vfs_base_url");
+  const workspace_id = searchParams.get("workspace_id");
+  const user_id = searchParams.get("user_id");
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<string>("checking");
   const [csrfToken, setCsrfToken] = useState<string | undefined>(undefined);
@@ -59,64 +61,101 @@ const AutoAuthPage = observer(() => {
       return;
     }
 
-    if (email && password && csrfToken) {
-      setStatus("authenticating");
-      
-      // Use the auto-auth endpoint directly
-      fetch('/auth/auto-auth/', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-CSRFToken': csrfToken,
-        },
-        credentials: 'include',
-        body: JSON.stringify({ 
-          email, 
-          password,
-          first_name: firstname,
-          last_name: lastname,
-        }),
-      })
-      .then(response => {
-        // Get the redirect URL from the response headers
-        const redirectUrl = response.headers.get('Location');
-        if (redirectUrl) {
-          // Use Next.js router to navigate
-          router.push(redirectUrl);
-          return;
-        }
-        return response.json();
-      })
-      .then(data => {
-        if (data && data.error) {
-          console.error('Authentication error:', {
-            email,
-            password,
-            firstname,
-            lastname,
-            error: data.error,
-            message: data.message
-          });
-          setError(data.message);
+    // Call the kadmap api to get the user's details
+    if (kadmap_api_url && user_id) {
+      setStatus("fetching_user_details");
+      fetch(`${kadmap_api_url}/directory/users/${user_id}`)
+        .then(response => response.json())
+        .then(data => {
+          if (data.error) {
+            console.error('Error fetching user details:', data.error);
+            setError('Error fetching user details');
+            setStatus("error");
+          } else {
+            // Get the user's details
+            const userDetails = data.data;
+            const fullName = userDetails.fullName;
+            email = userDetails.userKID;
+            firstName = fullName.split(' ')[0];
+            lastName = fullName.split(' ')[1];
+            password = userDetails.userId;
+
+            // Now that we have the user details, proceed with auto-auth
+            if (csrfToken) {
+              setStatus("authenticating");
+              
+              // Use the auto-auth endpoint directly
+              fetch('/auth/auto-auth/', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'X-CSRFToken': csrfToken,
+                },
+                credentials: 'include',
+                body: JSON.stringify({ 
+                  email, 
+                  password,
+                  first_name: firstName,
+                  last_name: lastName,
+                }),
+              })
+              .then(response => {
+                // Get the redirect URL from the response headers
+                const redirectUrl = response.headers.get('Location');
+                if (redirectUrl) {
+                  // Use Next.js router to navigate
+                  router.push(redirectUrl);
+                  return;
+                }
+                return response.json();
+              })
+              .then(data => {
+                if (data && data.error) {
+                  // If instance is not configured or guard is admin, redirect to god-mode
+                  if (data.error === "INSTANCE_NOT_CONFIGURED" || guard === "admin") {
+                    const params = new URLSearchParams(searchParams.toString());
+                    router.push(`/god-mode/auto_auth?${params.toString()}`);
+                    return;
+                  }
+                  
+                  console.error('Authentication error:', {
+                    email,
+                    password,
+                    firstName,
+                    lastName,
+                    error: data.error,
+                    message: data.message
+                  });
+                  setError(data.message);
+                  setStatus("error");
+                } else if (data && data.authenticated) {
+                  // User is authenticated, redirect to root path
+                  router.push('/');
+                } else if (data && data.redirect_url) {
+                  // Use Next.js router to navigate
+                  router.push(data.redirect_url);
+                }
+              })
+              .catch(err => {
+                console.error('Error during authentication:', err);
+                setError('Error during authentication: ' + err.message);
+                setStatus("error");
+              });
+            }
+          }
+        })
+        .catch(err => {
+          console.error('Error fetching user details:', err);
+          setError('Error fetching user details: ' + err.message);
           setStatus("error");
-        } else if (data && data.authenticated) {
-          // User is authenticated, redirect to root path
-          router.push('/');
-        } else if (data && data.redirect_url) {
-          // Use Next.js router to navigate
-          router.push(data.redirect_url);
-        }
-      })
-      .catch(err => {
-        console.error('Error during authentication:', err);
-        setError('Error during authentication: ' + err.message);
-        setStatus("error");
-      });
+        });
     }
-  }, [email, password, firstname, lastname, company_name, is_telemetry_enabled, guard, searchParams, router, csrfToken]);
+  }, [kadmap_api_url, user_id, guard, searchParams, router, csrfToken]);
 
   const getStatusMessage = () => {
     switch (status) {
+      case "fetching_user_details":
+        return "Fetching user details...";
       case "checking":
         return "Checking your account...";
       case "authenticating":
