@@ -54,6 +54,7 @@ const AutoAuthPage = observer(() => {
 
   useEffect(() => {
     let timeoutId;
+    console.log("timeoutId", timeoutId);
     timeoutId = setTimeout(() => {
       console.log("Page has been idle for too long, reloading...");
       setStatus("reloading");
