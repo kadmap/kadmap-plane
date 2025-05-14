@@ -26,6 +26,8 @@ export const InstanceProvider: FC<InstanceProviderProps> = observer((props) => {
     errorRetryCount: 0,
   });
 
+  console.log("pathname", pathname);
+
   // Bypass instance check for auto-auth route
   if (pathname?.startsWith('/auto_auth')) {
     return <>{children}</>;
